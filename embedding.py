@@ -1,0 +1,64 @@
+import torch
+import torch.nn as nn
+import math
+
+class SinusoidalPositionalEmbedding(nn.Module):
+    def __init__(self, d_model, max_seq_len=5000, dropout=0.0):
+        super().__init__()
+        self.d_model = d_model
+        self.max_seq_len = max_seq_len
+        self.dropout = nn.Dropout(p=dropout)
+
+        pe = torch.zeros(max_seq_len, d_model)
+        position = torch.arange(0, max_seq_len, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
+
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.unsqueeze(0)
+        self.register_buffer("pe", pe, persistent=False)
+
+    def forward(self, x):
+        seq_len = x.shape[1]
+        pe_sliced = self.pe[:, :seq_len, :].to(x.device, dtype=x.dtype)
+        x = x + pe_sliced
+        return self.dropout(x)
+    
+class RotaryEmbedding(nn.Module):
+    def __init__(self, dim, max_seq_len=2048, base=10000):
+        super().__init__()
+        if dim % 2 != 0:
+            raise ValueError(f"RotaryEmbedding dimension `dim` must be even, but got {dim}")
+        self.dim = dim
+        self.max_seq_len = max_seq_len
+        self.base = base
+        inv_freq = 1.0 / (self.base ** (torch.arange(0, dim, 2).float() / dim))
+        self.register_buffer("inv_freq", inv_freq)
+        self._set_cos_sin_cache(seq_len=max_seq_len, device=torch.device("cpu"), dtype=torch.float32)
+
+    def _set_cos_sin_cache(self, seq_len, device, dtype):
+        t = torch.arange(seq_len, device=device, dtype=dtype)
+        freqs = torch.outer(t, self.inv_freq)
+        emb = torch.cat((freqs, freqs), dim=-1)
+        self.register_buffer("cos_cached", emb.cos()[None, :, None, :], persistent=False)
+        self.register_buffer("sin_cached", emb.sin()[None, :, None, :], persistent=False)
+
+    def _rotate_half(self, x):
+        x1, x2 = x.chunk(2, dim=-1)
+        return torch.cat((-x2, x1), dim=-1)
+
+    def forward(self, x, offset=0):
+        seq_len = x.shape[1]
+        if seq_len + offset > self.max_seq_len or self.cos_cached.device != x.device or self.cos_cached.dtype != x.dtype:
+            self._set_cos_sin_cache(seq_len + offset, x.device, x.dtype)
+            self.max_seq_len = seq_len + offset
+
+        cos = self.cos_cached[:, offset:seq_len + offset, :, :].squeeze(2)
+        sin = self.sin_cached[:, offset:seq_len + offset, :, :].squeeze(2)
+
+        if x.ndim == 3:
+            cos = cos.squeeze(2)
+            sin = sin.squeeze(2)
+        
+        x_rotated = (x * cos) + (self._rotate_half(x) * sin)
+        return x_rotated
