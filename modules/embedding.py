@@ -4,6 +4,27 @@ import math
 import einops
 
 class SinusoidalPositionalEmbedding(nn.Module):
+    """
+    Sinusoidal positional embedding for sequences.
+
+    Adds fixed sinusoidal positional encodings to the input tensor.
+
+    Example:
+        >>> emb = SinusoidalPositionalEmbedding(d_model=16)
+        >>> x = torch.randn(2, 10, 16)
+        >>> out = emb(x)
+        # out.shape == (2, 10, 16)
+
+    Args:
+        d_model (int): Embedding dimension.
+        max_seq_len (int): Maximum sequence length (default: 5000).
+        dropout (float): Dropout probability (default: 0.0).
+
+    Input shape:
+        Tensor of shape (batch, seq_len, d_model)
+    Output shape:
+        Tensor of shape (batch, seq_len, d_model)
+    """
     def __init__(self, d_model, max_seq_len=5000, dropout=0.0):
         super().__init__()
         self.d_model = d_model
@@ -26,6 +47,27 @@ class SinusoidalPositionalEmbedding(nn.Module):
         return self.dropout(x)
     
 class RotaryEmbedding(nn.Module):
+    """
+    Rotary positional embedding for sequences.
+
+    Applies rotary position encodings to the input tensor.
+
+    Example:
+        >>> emb = RotaryEmbedding(dim=8)
+        >>> x = torch.randn(2, 10, 8)
+        >>> out = emb(x)
+        # out.shape == (2, 10, 8)
+
+    Args:
+        dim (int): Embedding dimension (must be even).
+        max_seq_len (int): Maximum sequence length (default: 2048).
+        base (float): Base for frequency calculation (default: 10000).
+
+    Input shape:
+        Tensor of shape (batch, seq_len, dim) or (batch, heads, seq_len, dim)
+    Output shape:
+        Tensor of same shape as input
+    """
     def __init__(self, dim, max_seq_len=2048, base=10000):
         super().__init__()
         if dim % 2 != 0:
@@ -65,6 +107,27 @@ class RotaryEmbedding(nn.Module):
         return x_rotated
     
 class SinusoidalPositionalEmbeddingVision(nn.Module):
+    """
+    Sinusoidal positional embedding for 2D images.
+
+    Adds 2D sinusoidal positional encodings to the input tensor.
+
+    Example:
+        >>> emb = SinusoidalPositionalEmbeddingVision(dim=8, height_or_width=16)
+        >>> x = torch.randn(2, 8, 16, 16)
+        >>> out = emb(x)
+        # out.shape == (2, 24, 16, 16)
+
+    Args:
+        dim (int): Embedding dimension.
+        height_or_width (int): Height or width of the image.
+        theta (float): Base for frequency calculation (default: 10000).
+
+    Input shape:
+        Tensor of shape (batch, dim, height, width)
+    Output shape:
+        Tensor of shape (batch, dim + 2 * dim, height, width)
+    """
     def __init__(self, dim, height_or_width, theta = 10000):
         super().__init__()
         self.dim = dim

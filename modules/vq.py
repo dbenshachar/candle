@@ -5,6 +5,33 @@ import torch.nn.functional as F
 import einops
 
 class VectorQuantizeEMA(nn.Module):
+    """
+    Vector Quantization with Exponential Moving Average (EMA) for codebook updates.
+
+    Quantizes input latents to the nearest embedding vector and updates the codebook using EMA.
+
+    Example:
+        >>> vq = VectorQuantizeEMA(num_embeddings=512, embedding_dim=64)
+        >>> x = torch.randn(4, 8, 2, 64)  # (batch, n, j, d)
+        >>> out = vq(x)
+        # out['quantized'].shape == (4, 8, 2, 64)
+
+    Args:
+        num_embeddings (int): Number of codebook vectors.
+        embedding_dim (int): Dimension of each codebook vector.
+        decay (float): EMA decay rate (default: 0.99).
+        commit_cost (float): Commitment loss coefficient (default: 0.25).
+
+    Input shape:
+        Tensor of shape (batch, n, j, d)
+    Output shape:
+        Dictionary with keys:
+            'quantized': Tensor of shape (batch, n, j, d)
+            'loss': Scalar tensor
+            'perplexity': Scalar tensor
+            'encodings': Tensor of shape (batch * n * j, num_embeddings)
+            'distances': Tensor of shape (batch * n * j, num_embeddings)
+    """
     def __init__(self, num_embeddings, embedding_dim, decay=0.99, commit_cost=0.25):
         super().__init__()
 
