@@ -68,8 +68,7 @@ class Attend(nn.Module):
             attn_mask_sdp = None
             if mask is not None:
                 attn_mask_sdp = einops.rearrange(mask, 'b j -> b 1 1 j')
-
-            with torch.backends.cuda.sdp_kernel(enable_flash=True, enable_math=True, enable_efficient=True):
+            with nn.attention.sdpa_kernel(nn.attention.SDPBackend.FLASH_ATTENTION):
                 out = F.scaled_dot_product_attention(
                     q, k, v,
                     attn_mask=attn_mask_sdp,
