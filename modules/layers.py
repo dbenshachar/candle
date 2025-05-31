@@ -16,10 +16,28 @@ from attention import (
 class SelfAttentionLayer(nn.Module):
     """
     General self-attention layer for images or sequences.
+
+    Example:
+        >>> layer = SelfAttentionLayer(mode='image', use_linear=True, channels=32, heads=4)
+        >>> x = torch.randn(2, 32, 16, 16)
+        >>> out = layer(x)
+        # out.shape == (2, 32, 16, 16)
+
+        >>> layer = SelfAttentionLayer(mode='sequence', dim=64, heads=4)
+        >>> x = torch.randn(2, 10, 64)
+        >>> out = layer(x)
+        # out.shape == (2, 10, 64)
+
     Args:
-        mode: 'image' or 'sequence'
-        use_linear: if True and mode='image', use linear attention (default True)
-        **kwargs: passed to the underlying attention module
+        mode (str): 'image' or 'sequence'.
+        use_linear (bool): If True and mode='image', use linear attention (default True).
+        **kwargs: Additional arguments passed to the underlying attention module.
+
+    Input shape:
+        For mode='image': (batch, channels, height, width)
+        For mode='sequence': (batch, seq_len, dim)
+    Output shape:
+        Same as input shape.
     """
     def __init__(self, mode='image', use_linear=True, **kwargs):
         super().__init__()
@@ -40,9 +58,27 @@ class SelfAttentionLayer(nn.Module):
 class ImageTextAttentionLayer(nn.Module):
     """
     Layer combining image self-attention and text-image cross-attention.
+
+    Example:
+        >>> image_attn_kwargs = dict(channels=32, heads=4)
+        >>> cross_attn_kwargs = dict(dim=64, heads=2)
+        >>> layer = ImageTextAttentionLayer(image_attn_kwargs, cross_attn_kwargs)
+        >>> image = torch.randn(2, 32, 16, 16)
+        >>> text = torch.randn(2, 10, 64)
+        >>> image_out, text_out = layer(image, text)
+        # image_out.shape == (2, 32, 16, 16)
+        # text_out.shape == (2, 10, 64)
+
     Args:
-        image_attn_kwargs: kwargs for image self-attention
-        cross_attn_kwargs: kwargs for text-image cross-attention
+        image_attn_kwargs (dict): Keyword arguments for image self-attention.
+        cross_attn_kwargs (dict): Keyword arguments for text-image cross-attention.
+
+    Input shape:
+        image: (batch, channels, height, width)
+        text: (batch, seq_len, dim)
+    Output shape:
+        image_out: (batch, channels, height, width)
+        text_out: (batch, seq_len, dim)
     """
     def __init__(self, image_attn_kwargs, cross_attn_kwargs):
         super().__init__()
@@ -57,9 +93,27 @@ class ImageTextAttentionLayer(nn.Module):
 class SequenceImageAttentionLayer(nn.Module):
     """
     Layer combining sequence self-attention and image-sequence cross-attention.
+
+    Example:
+        >>> seq_attn_kwargs = dict(dim=64, heads=4)
+        >>> cross_attn_kwargs = dict(dim=64, heads=2)
+        >>> layer = SequenceImageAttentionLayer(seq_attn_kwargs, cross_attn_kwargs)
+        >>> seq = torch.randn(2, 10, 64)
+        >>> image = torch.randn(2, 16, 64)
+        >>> seq_out, image_out = layer(seq, image)
+        # seq_out.shape == (2, 10, 64)
+        # image_out.shape == (2, 16, 64)
+
     Args:
-        seq_attn_kwargs: kwargs for sequence self-attention
-        cross_attn_kwargs: kwargs for image-sequence cross-attention
+        seq_attn_kwargs (dict): Keyword arguments for sequence self-attention.
+        cross_attn_kwargs (dict): Keyword arguments for image-sequence cross-attention.
+
+    Input shape:
+        seq: (batch, seq_len, dim)
+        image: (batch, image_len, dim)
+    Output shape:
+        seq_out: (batch, seq_len, dim)
+        image_out: (batch, image_len, dim)
     """
     def __init__(self, seq_attn_kwargs, cross_attn_kwargs):
         super().__init__()
@@ -74,8 +128,25 @@ class SequenceImageAttentionLayer(nn.Module):
 class ConvLayer(nn.Module):
     """
     Simple convolutional block with normalization and activation.
+
+    Example:
+        >>> layer = ConvLayer(in_channels=32, out_channels=64)
+        >>> x = torch.randn(2, 32, 16, 16)
+        >>> out = layer(x)
+        # out.shape == (2, 64, 16, 16)
+
     Args:
-        in_channels, out_channels, kernel_size, norm_layer, activation
+        in_channels (int): Number of input channels.
+        out_channels (int): Number of output channels.
+        kernel_size (int): Convolution kernel size.
+        norm_layer (nn.Module): Normalization layer class.
+        groups (int): Number of groups for normalization.
+        activation (nn.Module): Activation function class.
+
+    Input shape:
+        (batch, in_channels, height, width)
+    Output shape:
+        (batch, out_channels, height, width)
     """
     def __init__(self, in_channels, out_channels, kernel_size=3, norm_layer=nn.GroupNorm, groups=8, activation=nn.SiLU):
         super().__init__()
@@ -89,8 +160,22 @@ class ConvLayer(nn.Module):
 class DiffusionConvLayer(nn.Module):
     """
     Convolutional block for diffusion models using scale-shift.
+
+    Example:
+        >>> layer = DiffusionConvLayer(in_channels=32, out_channels=64)
+        >>> x = torch.randn(2, 32, 16, 16)
+        >>> out = layer(x)
+        # out.shape == (2, 64, 16, 16)
+
     Args:
-        in_channels, out_channels, groups
+        in_channels (int): Number of input channels.
+        out_channels (int): Number of output channels.
+        groups (int): Number of groups for normalization.
+
+    Input shape:
+        (batch, in_channels, height, width)
+    Output shape:
+        (batch, out_channels, height, width)
     """
     def __init__(self, in_channels, out_channels, groups=8):
         super().__init__()
@@ -100,6 +185,28 @@ class DiffusionConvLayer(nn.Module):
         return self.block(x, scale_shift=scale_shift)
 
 class ScaleShiftResnetBlock(nn.Module):
+    """
+    Residual block with scale-shift normalization and optional time embedding.
+
+    Example:
+        >>> block = ScaleShiftResnetBlock(dim=32, dim_out=64, time_emb_dim=128)
+        >>> x = torch.randn(2, 32, 16, 16)
+        >>> t = torch.randn(2, 128)
+        >>> out = block(x, time_emb=t)
+        # out.shape == (2, 64, 16, 16)
+
+    Args:
+        dim (int): Input dimension.
+        dim_out (int): Output dimension.
+        time_emb_dim (int, optional): Dimension of time embedding.
+        groups (int): Number of groups for normalization.
+
+    Input shape:
+        x: (batch, dim, height, width)
+        time_emb (optional): (batch, time_emb_dim)
+    Output shape:
+        (batch, dim_out, height, width)
+    """
     def __init__(self, dim, dim_out, *, time_emb_dim=None, groups=8):
         super().__init__()
         self.mlp = (
