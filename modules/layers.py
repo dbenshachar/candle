@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from convolution import ScaleShift
+from convolution import ScaleShift, ChannelAttention
 import einops
 
 from attention import (
@@ -94,26 +94,20 @@ class SequenceImageAttentionLayer(nn.Module):
     """
     Layer combining sequence self-attention and image-sequence cross-attention.
 
-    Example:
-        >>> seq_attn_kwargs = dict(dim=64, heads=4)
-        >>> cross_attn_kwargs = dict(dim=64, heads=2)
-        >>> layer = SequenceImageAttentionLayer(seq_attn_kwargs, cross_attn_kwargs)
-        >>> seq = torch.randn(2, 10, 64)
-        >>> image = torch.randn(2, 16, 64)
-        >>> seq_out, image_out = layer(seq, image)
-        # seq_out.shape == (2, 10, 64)
-        # image_out.shape == (2, 16, 64)
+    Use case:
+        This layer is designed for multimodal models that process both sequential (e.g., text) and image data. It applies self-attention to a sequence and then cross-attends the image features to the sequence features, enabling information flow between modalities.
 
     Args:
-        seq_attn_kwargs (dict): Keyword arguments for sequence self-attention.
-        cross_attn_kwargs (dict): Keyword arguments for image-sequence cross-attention.
+        seq_attn_kwargs (dict): Arguments for sequence self-attention.
+        cross_attn_kwargs (dict): Arguments for image-sequence cross-attention.
 
     Input shape:
-        seq: (batch, seq_len, dim)
-        image: (batch, image_len, dim)
+        seq: (batch, seq_len, dim) - sequence input (e.g., text embeddings)
+        image: (batch, image_len, dim) - image input (e.g., flattened image patches or tokens)
+        mask (optional): (batch, seq_len) or (batch, image_len) - attention mask
     Output shape:
-        seq_out: (batch, seq_len, dim)
-        image_out: (batch, image_len, dim)
+        seq_out: (batch, seq_len, dim) - attended sequence output
+        image_out: (batch, image_len, dim) - attended image output
     """
     def __init__(self, seq_attn_kwargs, cross_attn_kwargs):
         super().__init__()
@@ -127,24 +121,21 @@ class SequenceImageAttentionLayer(nn.Module):
 
 class ConvLayer(nn.Module):
     """
-    Simple convolutional block with normalization and activation.
+    General convolutional layer with normalization and activation.
 
-    Example:
-        >>> layer = ConvLayer(in_channels=32, out_channels=64)
-        >>> x = torch.randn(2, 32, 16, 16)
-        >>> out = layer(x)
-        # out.shape == (2, 64, 16, 16)
+    Use case:
+        This layer is a flexible building block for convolutional neural networks, supporting configurable normalization and activation. Useful for image feature extraction or as a component in larger architectures.
 
     Args:
         in_channels (int): Number of input channels.
         out_channels (int): Number of output channels.
-        kernel_size (int): Convolution kernel size.
-        norm_layer (nn.Module): Normalization layer class.
-        groups (int): Number of groups for normalization.
-        activation (nn.Module): Activation function class.
+        kernel_size (int): Size of the convolution kernel (default: 3).
+        norm_layer (callable): Normalization layer class (default: nn.GroupNorm).
+        groups (int): Number of groups for normalization (default: 8).
+        activation (callable): Activation function class (default: nn.SiLU).
 
     Input shape:
-        (batch, in_channels, height, width)
+        x: (batch, in_channels, height, width)
     Output shape:
         (batch, out_channels, height, width)
     """
@@ -229,3 +220,23 @@ class ScaleShiftResnetBlock(nn.Module):
         h = self.block1(x, scale_shift=scale_shift)
         h = self.block2(h)
         return h + self.res_conv(x)
+    
+class SqueezeAndExciteLayer(nn.Module):
+    def __init__(self, num_classes=10):
+        super().__init__()
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU(inplace=True)
+        self.channel_attention = ChannelAttention(64)
+
+        self.conv2 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm2d(128)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.fc = nn.Linear(128 * 8 * 8, num_classes)
+
+    def forward(self, x):
+        x = self.pool(self.relu(self.bn1(self.conv1(x))))
+        x = self.pool(self.relu(self.bn2(self.conv2(x))))
+        x = torch.flatten(x, 1)
+        x = self.fc(x)
+        return x
