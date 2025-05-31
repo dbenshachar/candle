@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 from torch.nn import functional as F
+import einops
 import einops.layers.torch as layers
 from norm import ChanLayerNorm
 
@@ -68,3 +69,21 @@ def Conv(channels, out_channels=None, kernel_size=3):
     if out_channels is None:
         out_channels = channels
     return nn.Conv2d(channels, out_channels, kernel_size=kernel_size, padding=kernel_size // 2, groups=channels, stride=1)
+
+class ScaleShift(nn.Module):
+    def __init__(self, dim, dim_out, groups=8):
+        super().__init__()
+        self.proj = Conv(dim, dim_out, 3, padding=1)
+        self.norm = nn.GroupNorm(groups, dim_out)
+        self.act = nn.SiLU()
+
+    def forward(self, x, scale_shift=None):
+        x = self.proj(x)
+        x = self.norm(x)
+
+        if scale_shift is not None:
+            scale, shift = scale_shift
+            x = x * (scale + 1) + shift
+
+        x = self.act(x)
+        return x
