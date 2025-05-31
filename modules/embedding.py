@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import math
+import einops
 
 class SinusoidalPositionalEmbedding(nn.Module):
     def __init__(self, d_model, max_seq_len=5000, dropout=0.0):
@@ -62,3 +63,23 @@ class RotaryEmbedding(nn.Module):
         
         x_rotated = (x * cos) + (self._rotate_half(x) * sin)
         return x_rotated
+    
+class SinusoidalPositionalEmbeddingVision(nn.Module):
+    def __init__(self, dim, height_or_width, theta = 10000):
+        super().__init__()
+        self.dim = dim
+        self.theta = theta
+
+        hw_range = torch.arange(height_or_width)
+        coors = torch.stack(torch.meshgrid(hw_range, hw_range, indexing = 'ij'), dim = -1)
+        coors = einops.rearrange(coors, 'h w c -> h w c')
+        self.register_buffer('coors', coors, persistent = False)
+
+    def forward(self, x):
+        half_dim = self.dim // 2
+        emb = math.log(self.theta) / (half_dim - 1)
+        emb = torch.exp(torch.arange(half_dim, device = x.device) * -emb)
+        emb = einops.rearrange(self.coors, 'h w c -> h w c 1') * einops.rearrange(emb, 'j -> 1 1 1 j')
+        fourier = torch.cat((emb.sin(), emb.cos()), dim = -1)
+        fourier = einops.repeat(fourier, 'h w c d -> b (c d) h w', b = x.shape[0])
+        return torch.cat((x, fourier), dim = 1)
