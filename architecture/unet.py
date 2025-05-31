@@ -114,3 +114,47 @@ class UNet(nn.Module):
 
         h = self.final_norm(h)
         return self.final_conv(h)
+
+    def generate(
+        self,
+        shape,
+        num_steps=50,
+        device=None,
+        diffusion=True,
+        eta=0.0,
+        **kwargs
+    ):
+        """
+        Generate an image using the UNet.
+        If diffusion is enabled, uses a simple DDPM-like sampling loop.
+
+        Args:
+            shape: (batch, channels, height, width)
+            num_steps: Number of diffusion steps (if enabled)
+            device: torch device
+            diffusion: Whether to use diffusion sampling
+            eta: Noise scale for DDIM (if used)
+            **kwargs: Additional args for forward()
+        Returns:
+            Generated image tensor
+        """
+        device = device or next(self.parameters()).device
+        if self.use_time and diffusion:
+            # DDPM-like sampling
+            batch, channels, height, width = shape
+            x = torch.randn(shape, device=device)
+            timesteps = torch.linspace(1, 0, num_steps, device=device)
+            for i, t in enumerate(timesteps):
+                t_batch = torch.full((batch,), t, device=device)
+                noise_pred = self(x, t_batch, **kwargs)
+                # Simple Euler step (for demonstration, not production)
+                if i < num_steps - 1:
+                    noise = torch.randn_like(x) if eta > 0 else 0
+                    x = x - noise_pred / num_steps + eta * noise / (num_steps ** 0.5)
+                else:
+                    x = x - noise_pred / num_steps
+            return x
+        else:
+            # No diffusion: just run forward on random input
+            x = torch.randn(shape, device=device)
+            return self(x, None if self.use_time else None, **kwargs)
