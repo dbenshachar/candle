@@ -240,3 +240,48 @@ class SqueezeAndExciteLayer(nn.Module):
         x = torch.flatten(x, 1)
         x = self.fc(x)
         return x
+    
+class UNetBlock(nn.Module):
+    """
+    Residual block with ScaleShift and optional time embedding.
+    """
+    def __init__(self, in_ch, out_ch, time_emb_dim=None, groups=8):
+        super().__init__()
+        self.block1 = ScaleShift(in_ch, out_ch, groups=groups)
+        self.block2 = ScaleShift(out_ch, out_ch, groups=groups)
+        self.res_conv = nn.Conv2d(in_ch, out_ch, 1) if in_ch != out_ch else nn.Identity()
+        if time_emb_dim is not None:
+            self.time_mlp = nn.Sequential(
+                nn.SiLU(),
+                nn.Linear(time_emb_dim, out_ch * 2)
+            )
+        else:
+            self.time_mlp = None
+
+    def forward(self, x, time_emb=None):
+        scale_shift = None
+        if self.time_mlp is not None and time_emb is not None:
+            t = self.time_mlp(time_emb)
+            t = t[..., None, None]
+            scale, shift = t.chunk(2, dim=1)
+            scale_shift = (scale, shift)
+        h = self.block1(x, scale_shift=scale_shift)
+        h = self.block2(h)
+        return h + self.res_conv(x)
+
+class Downsample(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.conv = nn.Conv2d(channels, channels, 3, stride=2, padding=1)
+
+    def forward(self, x):
+        return self.conv(x)
+
+class Upsample(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.conv = nn.Conv2d(channels, channels, 3, padding=1)
+
+    def forward(self, x):
+        x = F.interpolate(x, scale_factor=2, mode='nearest')
+        return self.conv(x)
