@@ -2,12 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from layers import Downsample, Upsample, UNetBlock
-from modules.norm import ChanLayerNorm
-from modules.embedding import TimeEmbedding
-from modules.attention import SequenceImageCrossAttention
-from modules.composition import FeedForward
-from modules.embedding import SinusoidalPositionalEmbedding
+from .layers import Downsample, Upsample, UNetBlock
+from .modules.norm import ChanLayerNorm
+from .modules.embedding import TimeEmbedding
+from .modules.attention import SequenceImageCrossAttention
+from .modules.composition import FeedForward
+from .modules.embedding import SinusoidalPositionalEmbedding
 
 class Text2ImageUNet(nn.Module):
     """

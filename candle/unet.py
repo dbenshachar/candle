@@ -2,12 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from modules.convolution import ScaleShift
-from modules.norm import ChanLayerNorm
+from .modules.convolution import ScaleShift
+from .modules.norm import ChanLayerNorm
 import math
 
-from modules.embedding import TimeEmbedding
-from layers import Downsample, Upsample, UNetBlock
+from .modules.embedding import TimeEmbedding
+from .layers import Downsample, Upsample, UNetBlock
 
 class UNet(nn.Module):
     """

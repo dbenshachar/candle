@@ -2,10 +2,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from modules.norm import LayerNorm
-from modules.composition import Residual, FeedForward, Identity
-from modules.embedding import RotaryEmbedding
-from modules.attention import Attend
+from .modules.norm import LayerNorm
+from .modules.composition import Residual, FeedForward, Identity
+from .modules.embedding import RotaryEmbedding
+from .modules.attention import Attend
 
 class TransformerBlock(nn.Module):
     def __init__(
