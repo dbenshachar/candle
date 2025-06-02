@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from architecture.vision_transformer import VisionTransformerBody
+from vision_transformer import VisionTransformerBody
 from modules.vq import VectorQuantizeEMA
 
 class EncoderDecoder(nn.Module):

@@ -7,7 +7,7 @@ from modules.norm import ChanLayerNorm
 import math
 
 from modules.embedding import TimeEmbedding
-from modules.layers import Downsample, Upsample, UNetBlock
+from layers import Downsample, Upsample, UNetBlock
 
 class UNet(nn.Module):
     """

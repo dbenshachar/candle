@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from modules.layers import Downsample, Upsample, UNetBlock
+from layers import Downsample, Upsample, UNetBlock
 from modules.norm import ChanLayerNorm
 from modules.embedding import TimeEmbedding
 from modules.attention import SequenceImageCrossAttention
