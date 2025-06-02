@@ -3,7 +3,7 @@ from torch import nn
 from torch.nn import functional as F
 import einops
 import einops.layers.torch as layers
-from norm import ChanLayerNorm
+from .norm import ChanLayerNorm
 
 class ShiftPoolingTransformer(nn.Module):
     """

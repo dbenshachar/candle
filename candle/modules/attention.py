@@ -4,9 +4,9 @@ from torch.nn import functional as F
 
 import einops
 
-from norm import ChanLayerNorm, LayerNorm
-from embedding import RotaryEmbedding
-from convolution import Conv
+from .norm import ChanLayerNorm, LayerNorm
+from .embedding import RotaryEmbedding
+from .convolution import Conv
 
 class ImageSelfAttention(nn.Module):
     def __init__(self, channels, heads, dim_head=16, ff_mult=4, use_rope=True, max_seq_len=2048):

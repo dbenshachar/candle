@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from modules.layers import Downsample, Upsample, UNetBlock
 from modules.norm import ChanLayerNorm
-from modules.embedding import SinusoidalTimeEmbedding
+from modules.embedding import TimeEmbedding
 from modules.attention import SequenceImageCrossAttention
 from modules.composition import FeedForward
 from modules.embedding import SinusoidalPositionalEmbedding
@@ -32,7 +32,7 @@ class Text2ImageUNet(nn.Module):
         self.use_time = use_time
         if use_time:
             self.time_mlp = nn.Sequential(
-                SinusoidalTimeEmbedding(base_channels),
+                TimeEmbedding(base_channels),
                 nn.Linear(base_channels, time_emb_dim),
                 nn.SiLU(),
                 nn.Linear(time_emb_dim, time_emb_dim),

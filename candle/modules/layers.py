@@ -2,10 +2,10 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from convolution import ScaleShift, ChannelAttention
+from .convolution import ScaleShift, ChannelAttention
 import einops
 
-from attention import (
+from .attention import (
     ImageSelfAttention,
     ImageLinearSelfAttention,
     SequenceSelfAttention,

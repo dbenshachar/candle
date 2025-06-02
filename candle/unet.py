@@ -6,7 +6,7 @@ from modules.convolution import ScaleShift
 from modules.norm import ChanLayerNorm
 import math
 
-from modules.embedding import SinusoidalTimeEmbedding
+from modules.embedding import TimeEmbedding
 from modules.layers import Downsample, Upsample, UNetBlock
 
 class UNet(nn.Module):
@@ -38,7 +38,7 @@ class UNet(nn.Module):
         self.use_time = use_time
         if use_time:
             self.time_mlp = nn.Sequential(
-                SinusoidalTimeEmbedding(base_channels),
+                TimeEmbedding(base_channels),
                 nn.Linear(base_channels, time_emb_dim),
                 nn.SiLU(),
                 nn.Linear(time_emb_dim, time_emb_dim),
