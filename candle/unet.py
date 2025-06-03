@@ -12,7 +12,6 @@ from .layers import Downsample, Upsample, UNetBlock
 class UNet(nn.Module):
     """
     U-Net with ScaleShift blocks for diffusion models.
-
     Args:
         in_channels (int): Number of input channels.
         out_channels (int): Number of output channels.
@@ -73,8 +72,14 @@ class UNet(nn.Module):
         self.upsamples = nn.ModuleList()
         for mult in reversed(channel_mults):
             out_ch = base_channels * mult
-            for _ in range(num_res_blocks + 1):
-                self.ups.append(UNetBlock(in_ch + channels.pop(), out_ch, time_emb_dim, groups=groups))
+            for i in range(num_res_blocks + 1):
+                if i == 0:
+                    # First block at this level: concatenate skip connection
+                    skip_ch = channels.pop()
+                    self.ups.append(UNetBlock(in_ch + skip_ch, out_ch, time_emb_dim, groups=groups))
+                else:
+                    # No skip connection for subsequent blocks
+                    self.ups.append(UNetBlock(in_ch, out_ch, time_emb_dim, groups=groups))
                 in_ch = out_ch
             self.upsamples.append(Upsample(in_ch))
 

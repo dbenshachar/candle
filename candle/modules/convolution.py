@@ -33,7 +33,7 @@ def Conv(channels, out_channels=None, kernel_size=3):
 class ScaleShift(nn.Module):
     def __init__(self, dim, dim_out, groups=8):
         super().__init__()
-        self.proj = Conv(dim, dim_out, 3, padding=1)
+        self.proj = nn.Conv2d(dim, dim_out, kernel_size=3, padding=1)
         self.norm = nn.GroupNorm(groups, dim_out)
         self.act = nn.SiLU()
 

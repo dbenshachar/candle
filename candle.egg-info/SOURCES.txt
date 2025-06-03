@@ -3,6 +3,7 @@ candle/encoder_decoder.py
 candle/layers.py
 candle/sequence_transformer.py
 candle/text2image.py
+candle/trainer.py
 candle/unet.py
 candle/vision_transformer.py
 candle.egg-info/PKG-INFO
